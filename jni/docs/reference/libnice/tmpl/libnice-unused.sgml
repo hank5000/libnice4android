@@ -1,0 +1,54 @@
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:Image ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/stun-constants.sgml:Title ##### -->
+STUN Constants
+
+
+<!-- ##### SIGNAL NiceAgent::new-local-candidate ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### FUNCTION nice_address_equal_ip ##### -->
+<para>
+
+</para>
+
+@a: 
+@b: 
+@Returns: 
+
+<!-- ##### FUNCTION stun_message_append_software ##### -->
+<para>
+
+</para>
+
+@msg: 
+@software: 
+@Returns: 
+

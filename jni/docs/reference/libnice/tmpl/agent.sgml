@@ -1,0 +1,796 @@
+<!-- ##### SECTION Title ##### -->
+NiceAgent
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### SECTION Image ##### -->
+
+
+<!-- ##### STRUCT NiceAgent ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL NiceAgent::candidate-gathering-done ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL NiceAgent::component-state-changed ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+@arg3: 
+
+<!-- ##### SIGNAL NiceAgent::initial-binding-request-received ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL NiceAgent::new-candidate ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+@arg3: 
+
+<!-- ##### SIGNAL NiceAgent::new-candidate-full ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL NiceAgent::new-remote-candidate ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+@arg3: 
+
+<!-- ##### SIGNAL NiceAgent::new-remote-candidate-full ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL NiceAgent::new-selected-pair ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+@arg3: 
+@arg4: 
+
+<!-- ##### SIGNAL NiceAgent::new-selected-pair-full ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+@Param4: 
+@Param5: 
+
+<!-- ##### SIGNAL NiceAgent::reliable-transport-writable ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL NiceAgent::streams-removed ##### -->
+<para>
+
+</para>
+
+@niceagent: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG NiceAgent:bytestream-tcp ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:compatibility ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:controlling-mode ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:full-mode ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:ice-tcp ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:ice-udp ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:keepalive-conncheck ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:main-context ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:max-connectivity-checks ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:proxy-ip ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:proxy-password ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:proxy-port ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:proxy-type ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:proxy-username ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:reliable ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:stun-pacing-timer ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:stun-server ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:stun-server-port ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:upnp ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG NiceAgent:upnp-timeout ##### -->
+<para>
+
+</para>
+
+<!-- ##### ENUM NiceComponentState ##### -->
+<para>
+
+</para>
+
+@NICE_COMPONENT_STATE_DISCONNECTED: 
+@NICE_COMPONENT_STATE_GATHERING: 
+@NICE_COMPONENT_STATE_CONNECTING: 
+@NICE_COMPONENT_STATE_CONNECTED: 
+@NICE_COMPONENT_STATE_READY: 
+@NICE_COMPONENT_STATE_FAILED: 
+@NICE_COMPONENT_STATE_LAST: 
+
+<!-- ##### ENUM NiceComponentType ##### -->
+<para>
+
+</para>
+
+@NICE_COMPONENT_TYPE_RTP: 
+@NICE_COMPONENT_TYPE_RTCP: 
+
+<!-- ##### ENUM NiceProxyType ##### -->
+<para>
+
+</para>
+
+@NICE_PROXY_TYPE_NONE: 
+@NICE_PROXY_TYPE_SOCKS5: 
+@NICE_PROXY_TYPE_HTTP: 
+@NICE_PROXY_TYPE_LAST: 
+
+<!-- ##### ENUM NiceCompatibility ##### -->
+<para>
+
+</para>
+
+@NICE_COMPATIBILITY_RFC5245: 
+@NICE_COMPATIBILITY_DRAFT19: 
+@NICE_COMPATIBILITY_GOOGLE: 
+@NICE_COMPATIBILITY_MSN: 
+@NICE_COMPATIBILITY_WLM2009: 
+@NICE_COMPATIBILITY_OC2007: 
+@NICE_COMPATIBILITY_OC2007R2: 
+@NICE_COMPATIBILITY_LAST: 
+
+<!-- ##### USER_FUNCTION NiceAgentRecvFunc ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@len: 
+@buf: 
+@user_data: 
+
+
+<!-- ##### STRUCT NiceInputMessage ##### -->
+<para>
+
+</para>
+
+@buffers: 
+@n_buffers: 
+@from: 
+@length: 
+
+<!-- ##### STRUCT NiceOutputMessage ##### -->
+<para>
+
+</para>
+
+@buffers: 
+@n_buffers: 
+
+<!-- ##### MACRO NICE_AGENT_MAX_REMOTE_CANDIDATES ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### FUNCTION nice_agent_new ##### -->
+<para>
+
+</para>
+
+@ctx: 
+@compat: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_new_reliable ##### -->
+<para>
+
+</para>
+
+@ctx: 
+@compat: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_add_local_address ##### -->
+<para>
+
+</para>
+
+@agent: 
+@addr: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_port_range ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@min_port: 
+@max_port: 
+
+
+<!-- ##### FUNCTION nice_agent_add_stream ##### -->
+<para>
+
+</para>
+
+@agent: 
+@n_components: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_remove_stream ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+
+
+<!-- ##### FUNCTION nice_agent_set_relay_info ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@server_ip: 
+@server_port: 
+@username: 
+@password: 
+@type: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_forget_relays ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_gather_candidates ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_remote_credentials ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@ufrag: 
+@pwd: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_local_credentials ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@ufrag: 
+@pwd: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_local_credentials ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@ufrag: 
+@pwd: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_remote_candidates ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@candidates: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_remote_candidates ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_local_candidates ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_selected_pair ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@local: 
+@remote: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_send ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@len: 
+@buf: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_send_messages_nonblocking ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@messages: 
+@n_messages: 
+@cancellable: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_recv ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@buf: 
+@buf_len: 
+@cancellable: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_recv_messages ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@messages: 
+@n_messages: 
+@cancellable: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_recv_nonblocking ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@buf: 
+@buf_len: 
+@cancellable: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_recv_messages_nonblocking ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@messages: 
+@n_messages: 
+@cancellable: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_attach_recv ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@ctx: 
+@func: 
+@data: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_selected_pair ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@lfoundation: 
+@rfoundation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_selected_remote_candidate ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@candidate: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_stream_tos ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@tos: 
+
+
+<!-- ##### FUNCTION nice_agent_set_software ##### -->
+<para>
+
+</para>
+
+@agent: 
+@software: 
+
+
+<!-- ##### FUNCTION nice_agent_restart ##### -->
+<para>
+
+</para>
+
+@agent: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_restart_stream ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_set_stream_name ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_stream_name ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_default_local_candidate ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_generate_local_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_generate_local_stream_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@include_non_ice: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_generate_local_candidate_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@candidate: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_parse_remote_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@sdp: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_parse_remote_stream_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@sdp: 
+@ufrag: 
+@pwd: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_parse_remote_candidate_sdp ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@sdp: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_io_stream ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_selected_socket ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_agent_get_component_state ##### -->
+<para>
+
+</para>
+
+@agent: 
+@stream_id: 
+@component_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION nice_component_state_to_string ##### -->
+<para>
+
+</para>
+
+@state: 
+@Returns: 
+
+
