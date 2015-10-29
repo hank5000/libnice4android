@@ -1,5 +1,5 @@
 LOCAL_PATH  := $(call my-dir)
-LIBGSTREAMER_PATH := $(LOCAL_PATH)/../../libgstreamer_android
+LIBGSTREAMER_PATH := $(LOCAL_PATH)/../../libgstreamer4android
 
 ENABLE_BUILD_EXECUTABLE := false
 ENABLE_BUILD_SHARED := true
