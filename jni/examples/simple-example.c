@@ -105,7 +105,6 @@ main(int argc, char *argv[])
       stun_port = 3478;
 
     g_debug("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
-        fprintf("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
 
   }
 
