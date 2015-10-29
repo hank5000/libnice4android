@@ -1,15 +1,20 @@
 LOCAL_PATH  := $(call my-dir)
+LIBGSTREAMER_PATH := $(LOCAL_PATH)/../../libgstreamer_android
+
+ENABLE_BUILD_EXECUTABLE := false
+ENABLE_BUILD_SHARED := true
+
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := gstreamer_android
-LOCAL_SRC_FILES := ./libgstreamer_android.so
+LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/libgstreamer_android.so
 include $(PREBUILT_SHARED_LIBRARY)
 
 
 include $(CLEAR_VARS)
-NICE                    := libnice-0.1.12
-LOCAL_MODULE            := nicejni
-LOCAL_LDLIBS            := -llog 
+NICE                    := libnice-0.1.13
+LOCAL_MODULE            := nicesdp
+LOCAL_LDLIBS            := -llog
 
 
 LOCAL_SHARED_LIBRARIES  := gstreamer_android
@@ -22,20 +27,27 @@ NICE_DIRS               :=  $(LOCAL_PATH)/ \
                             $(LOCAL_PATH)/socket/ \
                             $(LOCAL_PATH)/stun/ \
                             $(LOCAL_PATH)/stun/usages/
-                            #$(LOCAL_PATH)/stun/tools/ \
 
 
-OTHER_INCLUDE           := $(LOCAL_PATH)/include/glib-2.0/ \
-                           $(LOCAL_PATH)/include/glib-2.0/glib/ \
-			   $(LOCAL_PATH)/jni/
+LIBGSTREAMER_INCLUDE    := $(LIBGSTREAMER_PATH)/include/glib-2.0/ \
+                           $(LIBGSTREAMER_PATH)/include/glib-2.0/glib/ \
+			   $(LIBGSTREAMER_PATH)/include/
 
 NICE_INCLUDES           := $(NICE_DIRS)
-NICE_SRC                := $(filter-out %test.c, $(foreach dir, $(NICE_DIRS), $(patsubst $(LOCAL_PATH)/%, %, $(wildcard $(addsuffix *.c, $(dir)))) )) \
-                           $(LOCAL_PATH)/examples/simple-example.c
+NICE_SRC                := $(filter-out %test.c, $(foreach dir, $(NICE_DIRS), $(patsubst $(LOCAL_PATH)/%, %, $(wildcard $(addsuffix *.c, $(dir)))) ))
 
-LOCAL_C_INCLUDES        := $(NICE_INCLUDES) $(OTHER_INCLUDE) #add your own headers if needed
+LOCAL_C_INCLUDES        := $(NICE_INCLUDES) $(LIBGSTREAMER_INCLUDE) #add your own headers if needed
 
-LOCAL_SRC_FILES         := [YOUR_SRC_FILES] \
+LOCAL_SRC_FILES         :=  $(LOCAL_PATH)/examples/sdp-example.c \
                             $(NICE_SRC)
 
+
+ifeq ($(ENABLE_BUILD_SHARED), true)
 include $(BUILD_SHARED_LIBRARY)
+endif
+
+
+ifeq ($(ENABLE_BUILD_EXECUTABLE), true)
+include $(BUILD_EXECUTABLE)
+endif
+

@@ -76,6 +76,8 @@ static gboolean stdin_remote_info_cb (GIOChannel *source, GIOCondition cond,
 static gboolean stdin_send_data_cb (GIOChannel *source, GIOCondition cond,
     gpointer data);
 
+
+
 int
 main(int argc, char *argv[])
 {
@@ -103,6 +105,8 @@ main(int argc, char *argv[])
       stun_port = 3478;
 
     g_debug("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
+        fprintf("Using stun server '[%s]:%u'\n", stun_addr, stun_port);
+
   }
 
 #if GLIB_CHECK_VERSION(2, 36, 0)
@@ -122,8 +126,9 @@ main(int argc, char *argv[])
   agent = nice_agent_new(g_main_loop_get_context (gloop),
       NICE_COMPATIBILITY_RFC5245);
   if (agent == NULL)
+  {
     g_error("Failed to create agent");
-
+  }
   // Set the STUN settings and controlling mode
   if (stun_addr) {
     g_object_set(agent, "stun-server", stun_addr, NULL);

@@ -68,6 +68,7 @@
 #include "agent.h"
 #include "agent-priv.h"
 #include "iostream.h"
+#include <android/log.h>
 
 #include "stream.h"
 #include "interfaces.h"
@@ -83,11 +84,15 @@
 
 #define MAX_TCP_MTU 1400 /* Use 1400 because of VPNs and we assume IEE 802.3 */
 
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,"HANKWU",__VA_ARGS__);
+
 static void
 nice_debug_input_message_composition (const NiceInputMessage *messages,
     guint n_messages);
 
 G_DEFINE_TYPE (NiceAgent, nice_agent, G_TYPE_OBJECT);
+
+
 
 enum
 {
@@ -5649,23 +5654,23 @@ nice_agent_generate_local_candidate_sdp (NiceAgent *agent,
   return g_string_free (sdp, FALSE);
 }
 
-NICEAPI_EXPORT gint
-nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
+int nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
 {
+  LOGD("come in nice_agent_parse_rmote_sdp");
+
   Stream *current_stream = NULL;
   gchar **sdp_lines = NULL;
   GSList *l, *stream_item = NULL;
   gint i;
   gint ret = 0;
-
   g_return_val_if_fail (NICE_IS_AGENT (agent), -1);
   g_return_val_if_fail (sdp != NULL, -1);
 
   agent_lock();
-
+  
   for (l = agent->streams; l; l = l->next) {
     Stream *stream = l->data;
-
+    LOGD("stream_name :%s",stream->name);
     if (stream->name == NULL) {
       ret = -1;
       goto done;
@@ -5674,6 +5679,8 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
 
   sdp_lines = g_strsplit (sdp, "\n", 0);
   for (i = 0; sdp_lines && sdp_lines[i]; i++) {
+    LOGD("i : %d",i);
+
     if (g_str_has_prefix (sdp_lines[i], "m=")) {
       if (stream_item == NULL)
         stream_item = agent->streams;
@@ -5681,6 +5688,7 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
         stream_item = stream_item->next;
       if (!stream_item) {
         g_critical("More streams in SDP than in agent");
+        LOGD("More streams in SDP than in agent");
         ret = -1;
         goto done;
       }
@@ -5688,6 +5696,8 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
    } else if (g_str_has_prefix (sdp_lines[i], "a=ice-ufrag:")) {
       if (current_stream == NULL) {
         ret = -1;
+                LOGD("current stream null");
+
         goto done;
       }
       g_strlcpy (current_stream->remote_ufrag, sdp_lines[i] + 12,
@@ -5736,7 +5746,7 @@ nice_agent_parse_remote_sdp (NiceAgent *agent, const gchar *sdp)
     g_strfreev(sdp_lines);
 
   agent_unlock_and_emit (agent);
-
+  LOGD("done!!!");
   return ret;
 }
 
