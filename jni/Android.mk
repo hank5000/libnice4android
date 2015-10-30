@@ -6,7 +6,7 @@ ENABLE_BUILD_EXECUTABLE := false
 ENABLE_BUILD_SHARED := true
 ENABLE_BUILD_JNI_PART := true
 
-ENABLE_SAMPLE := simple
+ENABLE_SAMPLE := sdp
 # simple, threaded, sdp
 
 
@@ -22,10 +22,14 @@ ifeq ($(ENABLE_BUILD_EXECUTABLE),false)
 ENABLE_SAMPLE :=
 endif
 
+
+
 include $(CLEAR_VARS)
 LOCAL_MODULE := gstreamer_android
 LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/libgstreamer_android.so
 include $(PREBUILT_SHARED_LIBRARY)
+
+
 
 
 include $(CLEAR_VARS)
