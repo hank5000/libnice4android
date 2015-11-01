@@ -8,17 +8,13 @@
 #include <agent.h>
 #include <android/log.h>
 
-// has input
+// has input CAST
 #define CAST_JNI_FN(fn) Java_com_via_libnice_##fn
 #define CAST_JNI_IN(fn, arg...) CAST_JNI_FN(fn) (JNIEnv* env, jobject obj, arg)
 #define CAST_JNI(fn, arg...) CAST_JNI_IN(fn, arg)
 
-// has no input
+// has no input CAST
 #define CAST_JNI_NON(fn) CAST_JNI_FN(fn) (JNIEnv* env, jobject obj)
-
-
-
-
 
 
 #define JNI_TAG "libnice-jni"
@@ -28,8 +24,19 @@
 #include <gio/gnetworking.h>
 #endif
 
+static JavaVM *gJavaVM;
 JNIEnv* niceJavaEnv = 0;
 jobject niceJavaObj= 0;
+jclass niceClazz;
+jmethodID cbJavaMsgId;
+jmethodID cbJavaIntId;
+jmethodID cbJavaMsgStaticId;
+
+
+NiceAgent *agent;
+guint stream_id;
+
+
 int stunPort = 3478;
 
 
@@ -40,6 +47,9 @@ static gboolean controlling;
 static gboolean exit_thread, candidate_gathering_done, negotiation_done;
 static GMutex gather_mutex, negotiate_mutex;
 static GCond gather_cond, negotiate_cond;
+
+
+
 
 static const gchar *state_name[] = {"disconnected", "gathering", "connecting",
                                     "connected", "ready", "failed"};
@@ -54,8 +64,38 @@ static void cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
 
 static void * example_thread(void *data);
 
-jclass libniceJava;
-jmethodID method1;
+void cbIntToJava(int i);
+void cbMsgToJava(char* c);
+void cvMsgToJavaStatic(char* c);
+
+
+void cbIntToJava(int i)
+{
+  jint tmp = i;
+  (*niceJavaEnv)->CallVoidMethod(niceJavaEnv,niceJavaObj,cbJavaIntId,tmp);
+}
+
+void cbMsgToJava(char* c)
+{
+  jstring tmp = (*niceJavaEnv)->NewStringUTF(niceJavaEnv,c);
+  (*niceJavaEnv)->CallVoidMethod(niceJavaEnv,niceJavaObj,cbJavaMsgId,tmp);
+  (*niceJavaEnv)->DeleteLocalRef(niceJavaEnv,tmp);
+}
+
+void cbMsgToJavaStatic(char* c)
+{
+  jstring tmp = (*niceJavaEnv)->NewStringUTF(niceJavaEnv,c);
+  (*niceJavaEnv)->CallStaticVoidMethod(niceJavaEnv,niceJavaObj,cbJavaMsgStaticId,tmp);
+  (*niceJavaEnv)->DeleteLocalRef(niceJavaEnv,tmp);
+}
+
+JNIEnv* getEnv()
+{
+    JNIEnv* env;
+    (*gJavaVM)->GetEnv(gJavaVM, (void**)&env, JNI_VERSION_1_6);
+    return env;
+}
+
 
 JNIEXPORT jint JNICALL CAST_JNI_NON(Init)
 {
@@ -64,30 +104,34 @@ JNIEXPORT jint JNICALL CAST_JNI_NON(Init)
     exit_thread = FALSE;
 
     gloop = g_main_loop_new(NULL, FALSE);
-    // JNI init
-    niceJavaEnv = env;
-    niceJavaObj = obj;
 
-    //libniceJava = (*env)->GetObjectClass(env, obj);
-    libniceJava = (*env)->FindClass(env, "com/via/libnice");
-    //libniceJava = (*env)->GetObjectClass(env,obj);
-    method1 = (*env)->GetMethodID(env,libniceJava,"cb_message","(Ljava/lang/String;)V");
+    // JNI init
+    (*env)->GetJavaVM(env,&gJavaVM);
+    niceJavaEnv = env;
+    niceJavaObj = (*env)->NewGlobalRef(env,obj);
+    niceClazz = (*env)->FindClass(env, "com/via/libnice");
+
+    // Init Callback function method id
+    cbJavaMsgId = (*env)->GetMethodID(env,niceClazz,"jniCallBackMsg","(Ljava/lang/String;)V");
+    //cbJavaMsgStaticId = (*env)->GetStaticMethodID(env,niceClazz,"jniCallBackMsgStatic","(Ljava/lang/String;)V");
+    cbJavaIntId = (*env)->GetMethodID(env,niceClazz,"jniCallBackInt","(I)V");
 
 	return 1;
 }
 
-JNIEXPORT jint JNICALL CAST_JNI_NON(mainLoopStart) 
+JNIEXPORT jint JNICALL CAST_JNI_NON(mainLoopStart)
 {
-    if(gloop) {
-       g_main_loop_run (gloop);
-    }
+  g_main_loop_run(gloop);
 }
-//(*env)->ReleaseStringUTFChars(env, jstun_ip, stunIp);
 
-NiceAgent *agent;
-guint stream_id;
+JNIEXPORT jint JNICALL CAST_JNI(sendData,jstring data)
+{
+  const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, 0);
+  nice_agent_send(agent, stream_id, 1, strlen(line), line);
+}
 
-JNIEXPORT jstring JNICALL CAST_JNI(createNiceAgent,jstring jstun_ip, jint jstun_port)
+
+JNIEXPORT jstring JNICALL CAST_JNI(createNiceAgentAndGetSdp,jstring jstun_ip, jint jstun_port)
 {
     jstring ret;
 
@@ -151,21 +195,42 @@ JNIEXPORT jstring JNICALL CAST_JNI(createNiceAgent,jstring jstun_ip, jint jstun_
     LOGD("Generated SDP from agent :\n%s\n\n", sdp);
     LOGD("Copy the following line to remote client:\n");
     sdp64 = g_base64_encode ((const guchar *)sdp, strlen (sdp));
-    //printf("\n  %s\n", sdp64);
-    ret = (*env)->NewStringUTF(env,sdp64);
 
-    //(*env)->CallVoidMethod(env,obj,method1,ret);
+    ret = (*env)->NewStringUTF(env,sdp64);
+    (*env)->CallVoidMethod(env,obj,cbJavaMsgId,ret);
+    
 
     LOGD("\n %s\n",sdp64);
+
     g_free (sdp);
     g_free (sdp64);
-
 
     return ret;
 }
 
+JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdp,jstring jremoteSdp,jlong size)
+{
+  gchar* sdp_decode;
+  const char *remoteSdp = (*env)->GetStringUTFChars(env, jremoteSdp, 0);
+  gsize sdp_len = size;
+  sdp_decode = (gchar *) g_base64_decode (remoteSdp, &sdp_len);
+  if (sdp_decode && nice_agent_parse_remote_sdp (agent, sdp_decode) > 0) {
+    g_free (sdp_decode);
+    LOGD("waiting for state READY or FAILED signal...");
+    g_mutex_lock(&negotiate_mutex);
+    while (!negotiation_done)
+      g_cond_wait(&negotiate_cond, &negotiate_mutex);
+    g_mutex_unlock(&negotiate_mutex);
+  } else {
+    //cbMsgToJava("please retry it");
+  }
+   // use your string
+  (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
+
+}
 
 
+// only test use
 JNIEXPORT jint JNICALL CAST_JNI_NON(mainTest)
 {
   GThread *gexamplethread;
@@ -179,13 +244,11 @@ JNIEXPORT jint JNICALL CAST_JNI_NON(mainTest)
 
   gloop = g_main_loop_new(NULL, FALSE);
 
-  LOGD("111");
   // Run the mainloop and the example thread
   exit_thread = FALSE;
   gexamplethread = g_thread_new("example thread", &example_thread, NULL);
   g_main_loop_run (gloop);
   exit_thread = TRUE;
-  LOGD("222");
 
   g_thread_join (gexamplethread);
   g_main_loop_unref(gloop);
@@ -345,7 +408,7 @@ static void
 cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
     gpointer data)
 {
-  g_debug("SIGNAL candidate gathering done\n");
+  LOGD("SIGNAL candidate gathering done\n");
 
   g_mutex_lock(&gather_mutex);
   candidate_gathering_done = TRUE;
@@ -358,7 +421,7 @@ cb_component_state_changed(NiceAgent *agent, guint stream_id,
     guint component_id, guint state,
     gpointer data)
 {
-  g_debug("SIGNAL: state changed %d %d %s[%d]\n",
+  LOGD("SIGNAL: state changed %d %d %s[%d]\n",
       stream_id, component_id, state_name[state], state);
 
   if (state == NICE_COMPONENT_STATE_READY) {
@@ -378,6 +441,45 @@ cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
   if (len == 1 && buf[0] == '\0')
     g_main_loop_quit (gloop);
 
-  printf("%.*s", len, buf);
-  fflush(stdout);
+  LOGD("Recv data : %.*s", len, buf);
+  LOGD("Recv data size : %d",len);
+
+  JNIEnv *env;
+  jclass cls;
+  jmethodID mid;
+  if((*gJavaVM)->AttachCurrentThread(gJavaVM, &env, NULL) != JNI_OK)
+  {
+      LOGD("%s: AttachCurrentThread() failed", __FUNCTION__);
+
+  } 
+  else
+  {
+    jbyteArray arr = (*env)->NewByteArray(env,len);
+    (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
+
+    //jstring tmp = (*env)->NewStringUTF(env,buf);
+    cls = (*env)->GetObjectClass(env,niceJavaObj);
+    if(cls == NULL)
+    {
+      LOGD("FindClass() Error.....");
+      //goto error; 
+    }
+    else
+    {
+      mid = (*env)->GetStaticMethodID(env, cls, "jniCallBackMsgStatic","([B)V");
+      if (mid == NULL) 
+      {
+        LOGD("GetMethodID() Error.....");
+        //goto error;  
+      }
+      else
+      {
+        //(*env)->CallStaticVoidMethod(env,cls,mid,tmp);
+        (*env)->CallStaticVoidMethod(env,cls,mid,arr);
+
+      }
+    }
+  }
+
+  //cbMsgToJavaStatic(buf);
 }
