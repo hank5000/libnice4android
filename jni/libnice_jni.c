@@ -50,7 +50,6 @@ static GCond gather_cond, negotiate_cond;
 
 
 
-
 static const gchar *state_name[] = {"disconnected", "gathering", "connecting",
                                     "connected", "ready", "failed"};
 
@@ -96,7 +95,6 @@ JNIEnv* getEnv()
     return env;
 }
 
-
 JNIEXPORT jint JNICALL CAST_JNI_NON(Init)
 {
     // Libnice init
@@ -129,7 +127,6 @@ JNIEXPORT jint JNICALL CAST_JNI(sendData,jstring data)
   const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, 0);
   nice_agent_send(agent, stream_id, 1, strlen(line), line);
 }
-
 
 JNIEXPORT jstring JNICALL CAST_JNI(createNiceAgentAndGetSdp,jstring jstun_ip, jint jstun_port)
 {
@@ -230,180 +227,6 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdp,jstring jremoteSdp,jlong size)
 }
 
 
-// only test use
-JNIEXPORT jint JNICALL CAST_JNI_NON(mainTest)
-{
-  GThread *gexamplethread;
-
-  // Parse arguments  
-#if GLIB_CHECK_VERSION(2, 36, 0)
-  g_networking_init();
-#else
-  g_type_init();
-#endif
-
-  gloop = g_main_loop_new(NULL, FALSE);
-
-  // Run the mainloop and the example thread
-  exit_thread = FALSE;
-  gexamplethread = g_thread_new("example thread", &example_thread, NULL);
-  g_main_loop_run (gloop);
-  exit_thread = TRUE;
-
-  g_thread_join (gexamplethread);
-  g_main_loop_unref(gloop);
-
-  return EXIT_SUCCESS;
-}
-
-
-
-static void *
-example_thread(void *data)
-{
-  NiceAgent *agent;
-  GIOChannel* io_stdin;
-  guint stream_id;
-  gchar *line = NULL;
-  gchar *sdp, *sdp64;
-LOGD("example thread");
-#ifdef G_OS_WIN32
-  io_stdin = g_io_channel_win32_new_fd(_fileno(stdin));
-#else
-  io_stdin = g_io_channel_unix_new(fileno(stdin));
-#endif
-  g_io_channel_set_flags(io_stdin, G_IO_FLAG_NONBLOCK, NULL);
-
-LOGD("example thread 1 ");
-
-  // Create the nice agent
-  agent = nice_agent_new(g_main_loop_get_context (gloop),
-      NICE_COMPATIBILITY_RFC5245);
-  if (agent == NULL)
-    LOGD("Failed to create agent");
-
-LOGD("example thread 2 ");
-
-  // Set the STUN settings and controlling mode
-  if (1) {
-    g_object_set(agent, "stun-server", "74.125.204.127", NULL);
-    g_object_set(agent, "stun-server-port", 19302, NULL);
-  }
-  g_object_set(agent, "controlling-mode", controlling, NULL);
-
-  // Connect to the signals
-  g_signal_connect(agent, "candidate-gathering-done",
-      G_CALLBACK(cb_candidate_gathering_done), NULL);
-  g_signal_connect(agent, "component-state-changed",
-      G_CALLBACK(cb_component_state_changed), NULL);
-LOGD("example thread 3 ");
-
-  // Create a new stream with one component
-  stream_id = nice_agent_add_stream(agent, 1);
-  if (stream_id == 0)
-    LOGD("Failed to add stream");
-  nice_agent_set_stream_name (agent, stream_id, "text");
-
-LOGD("example thread 4 ");
-
-  // Attach to the component to receive the data
-  // Without this call, candidates cannot be gathered
-  nice_agent_attach_recv(agent, stream_id, 1,
-      g_main_loop_get_context (gloop), cb_nice_recv, NULL);
-
-LOGD("example thread 5 ");
-
-  // Start gathering local candidates
-  if (!nice_agent_gather_candidates(agent, stream_id))
-    g_error("Failed to start candidate gathering");
-
-  g_debug("waiting for candidate-gathering-done signal...");
- LOGD("example thread 6 ");
-
-  g_mutex_lock(&gather_mutex);
-  while (!exit_thread && !candidate_gathering_done)
-    g_cond_wait(&gather_cond, &gather_mutex);
-  g_mutex_unlock(&gather_mutex);
-  if (exit_thread)
-    goto end;
-
-LOGD("example thread 7 ");
-
-  // Candidate gathering is done. Send our local candidates on stdout
-  sdp = nice_agent_generate_local_sdp (agent);
-  printf("Generated SDP from agent :\n%s\n\n", sdp);
-  printf("Copy the following line to remote client:\n");
-  sdp64 = g_base64_encode ((const guchar *)sdp, strlen (sdp));
-  LOGD("\n  %s\n", sdp64);
-  g_free (sdp);
-  g_free (sdp64);
-  LOGD("example thread 8 ");
-
-  // Listen on stdin for the remote candidate list
-  printf("Enter remote data (single line, no wrapping):\n");
-  printf("> ");
-  fflush (stdout);
-  while (!exit_thread) {
-    GIOStatus s = g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL);
-    if (s == G_IO_STATUS_NORMAL) {
-      gsize sdp_len;
-
-      sdp = (gchar *) g_base64_decode (line, &sdp_len);
-      // Parse remote candidate list and set it on the agent
-      if (sdp && nice_agent_parse_remote_sdp (agent, sdp) > 0) {
-        g_free (sdp);
-        g_free (line);
-        break;
-      } else {
-        fprintf(stderr, "ERROR: failed to parse remote data\n");
-        printf("Enter remote data (single line, no wrapping):\n");
-        printf("> ");
-        fflush (stdout);
-      }
-      g_free (sdp);
-      g_free (line);
-    } else if (s == G_IO_STATUS_AGAIN) {
-      g_usleep (100000);
-    }
-  }
-
-  g_debug("waiting for state READY or FAILED signal...");
-  g_mutex_lock(&negotiate_mutex);
-  while (!exit_thread && !negotiation_done)
-    g_cond_wait(&negotiate_cond, &negotiate_mutex);
-  g_mutex_unlock(&negotiate_mutex);
-  if (exit_thread)
-    goto end;
-
-  // Listen to stdin and send data written to it
-  printf("\nSend lines to remote (Ctrl-D to quit):\n");
-  printf("> ");
-  fflush (stdout);
-  while (!exit_thread) {
-    GIOStatus s = g_io_channel_read_line (io_stdin, &line, NULL, NULL, NULL);
-
-    if (s == G_IO_STATUS_NORMAL) {
-      nice_agent_send(agent, stream_id, 1, strlen(line), line);
-      g_free (line);
-      printf("> ");
-      fflush (stdout);
-    } else if (s == G_IO_STATUS_AGAIN) {
-      g_usleep (100000);
-    } else {
-      // Ctrl-D was pressed.
-      nice_agent_send(agent, stream_id, 1, 1, "\0");
-      break;
-    }
-  }
-
-end:
-  g_object_unref(agent);
-  g_io_channel_unref (io_stdin);
-  g_main_loop_quit (gloop);
-
-  return NULL;
-}
-
 static void
 cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
     gpointer data)
@@ -434,7 +257,11 @@ cb_component_state_changed(NiceAgent *agent, guint stream_id,
   }
 }
 
-static void
+
+jobject callback_obj;
+jmethodID callback_mid;
+
+void
 cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data)
 {
@@ -447,6 +274,11 @@ cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
   JNIEnv *env;
   jclass cls;
   jmethodID mid;
+
+
+  #if 0
+  // using static 
+
   if((*gJavaVM)->AttachCurrentThread(gJavaVM, &env, NULL) != JNI_OK)
   {
       LOGD("%s: AttachCurrentThread() failed", __FUNCTION__);
@@ -474,12 +306,39 @@ cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_id,
       }
       else
       {
-        //(*env)->CallStaticVoidMethod(env,cls,mid,tmp);
         (*env)->CallStaticVoidMethod(env,cls,mid,arr);
 
       }
     }
   }
+  #else
+  // using interface which is registered
+    if((*gJavaVM)->AttachCurrentThread(gJavaVM, &env, NULL) != JNI_OK)
+    {
+      LOGD("%s: AttachCurrentThread() failed", __FUNCTION__);
 
-  //cbMsgToJavaStatic(buf);
+    } 
+    else
+    {
+        jbyteArray arr = (*env)->NewByteArray(env,len);
+        (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
+        (*env)->CallVoidMethod(env,callback_obj,callback_mid,arr);
+    }
+
+
+  #endif
 }
+
+
+JNIEXPORT void CAST_JNI(registerObserverNative,jobject cb_obj) {
+    //bool returnValue = true;
+    callback_obj = (*env)->NewGlobalRef(env,cb_obj);
+    jclass clz = (*env)->GetObjectClass(env,callback_obj);
+    if(clz == NULL) {
+        LOGD("Failed to find class\n");
+        //return false;
+    }
+    callback_mid = (*env)->GetMethodID(env,clz,"obCallback","([B)V");
+}
+
+
