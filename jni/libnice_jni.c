@@ -372,7 +372,7 @@ JNIEXPORT jint JNICALL CAST_JNI(sendVideoDataDirectNative,jobject data,jint len,
   }
   int ret;
 
-  ret = nice_agent_send(agent, stream_id, component_id, sizeof(len), (const gchar*)&len);
+  //ret = nice_agent_send(agent, stream_id, component_id, sizeof(len), (const gchar*)&len);
 
   const jbyte* _data = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
 
