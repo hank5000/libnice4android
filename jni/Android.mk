@@ -48,7 +48,7 @@ LOCAL_LDLIBS            := -llog
 
 
 LOCAL_SHARED_LIBRARIES  := gstreamer_android
-LOCAL_CFLAGS            += -DHAVE_CONFIG_H
+LOCAL_CFLAGS            += -DHAVE_CONFIG_H -std=c99
 
 NICE_DIRS               :=  $(LIBNICE_PATH)/ \
                             $(LIBNICE_PATH)/agent/ \

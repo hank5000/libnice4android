@@ -24,8 +24,8 @@
 #include <gio/gnetworking.h>
 #endif
 
-
-#define MAX_COMPONENT 32
+#define MAX_STREAM 20
+#define MAX_COMPONENT 20
 static JavaVM *gJavaVM;
 JNIEnv* niceJavaEnv = 0;
 jobject niceJavaObj= 0;
@@ -38,9 +38,9 @@ typedef struct CallbackObserverCtx {
   jobject   jObj;
   jmethodID jmid;
   //struct cbObserverCtx* next;
-}ObCtx;
+}CallbackCtx;
 
-ObCtx cbObserverCtx[MAX_COMPONENT];
+CallbackCtx recvCallbackCtx[MAX_STREAM][MAX_COMPONENT];
 int currentCtxIdx = 0;
 
 // state observer interface
@@ -52,7 +52,6 @@ jmethodID cbComponentStateChangedId;
 
 
 NiceAgent *agent = NULL;
-guint stream_id;
 int stunPort = 3478;
 static GMainLoop *gloop;
 static gchar *stun_addr = NULL;
@@ -135,9 +134,11 @@ JNIEXPORT jint JNICALL CAST_JNI_NON(initNative)
   niceClazz = (*env)->FindClass(env, "com/via/libnice");
 
   for(int i=0;i<MAX_COMPONENT;i++) {
-    cbObserverCtx[i].used = 0;
-    cbObserverCtx[i].jObj = 0;
-    cbObserverCtx[i].jmid = 0;
+    for(int j=0;j<MAX_STREAM;j++) {
+      recvCallbackCtx[j][i].used = 0;
+      recvCallbackCtx[j][i].jObj = 0;
+      recvCallbackCtx[j][i].jmid = 0;
+    }
   }
 
   // Init Callback function method id
@@ -234,7 +235,7 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jstring jstreamName,jint numberO
     const gchar *name = (gchar*) (*env)->GetStringUTFChars(env, jstreamName, &isCopy);
 
     // Create a new stream with one component
-    stream_id = nice_agent_add_stream(agent, numberOfComponent);
+    int stream_id = nice_agent_add_stream(agent, numberOfComponent);
     if (stream_id == 0) {
         LOGD("Failed to add stream");
         return 0;
@@ -254,12 +255,14 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jstring jstreamName,jint numberO
       
     }
 
-    return 1;
+    return stream_id;
 }
 
-JNIEXPORT jstring JNICALL CAST_JNI_NON(getLocalSdpNative)
+
+
+JNIEXPORT jstring JNICALL CAST_JNI(getLocalSdpNative,jint stream_id)
 {
-      jstring ret;
+    jstring ret;
 
       // Start gathering local candidates
     if (!nice_agent_gather_candidates(agent, stream_id))
@@ -314,7 +317,7 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdpNative,jstring jremoteSdp,jlong size
 
 }
 
-JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jstring data,jint component_id)
+JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jstring data,jint stream_id,jint component_id)
 {
   if(component_id>totalComponentNumber || component_id<=0) {
     LOGD("fail to send to component id %d",component_id);
@@ -326,7 +329,7 @@ JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jstring data,jint component_id)
 }
 
 
-JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jbyteArray data,jint len,jint component_id)
+JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jbyteArray data,jint len,jint stream_id,jint component_id)
 {
   if(component_id>totalComponentNumber || component_id<=0) {
     LOGD("fail to send to component id %d",component_id);
@@ -348,7 +351,7 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jbyteArray data,jint len,jint com
   return ret;
 }
 
-JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jobject data,jint len,jint component_id)
+JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jobject data,jint len,jint stream_id,jint component_id)
 {
   if(component_id>totalComponentNumber || component_id<=0) {
     LOGD("fail to send to component id %d",component_id);
@@ -356,24 +359,6 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jobject data,jint len,jint 
   }
 
   int ret;
-  const jbyte* _data = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
-
-  ret = nice_agent_send(agent, stream_id, component_id, len, _data);
-  LOGD("Send %d size",ret);
-  return ret;
-}
-
-
-JNIEXPORT jint JNICALL CAST_JNI(sendVideoDataDirectNative,jobject data,jint len,jint component_id)
-{
-  if(component_id>totalComponentNumber || component_id<=0) {
-    LOGD("fail to send to component id %d",component_id);
-    return 0;
-  }
-  int ret;
-
-  //ret = nice_agent_send(agent, stream_id, component_id, sizeof(len), (const gchar*)&len);
-
   const jbyte* _data = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
 
   ret = nice_agent_send(agent, stream_id, component_id, len, _data);
@@ -442,20 +427,16 @@ void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data)
 {
   static int j = 0;
-  j++;
   if (len == 1 && buf[0] == '\0')
     g_main_loop_quit (gloop);
-
-
-
 
   JNIEnv *env;
   jclass cls;
   jmethodID mid;
 
 
-  if(cbObserverCtx[component_id].used!=1) {
-    LOGD("Please Register callback function for comp[%d]",component_id);
+  if(recvCallbackCtx[stream_id][component_id].used!=1) {
+    LOGD("Please Register callback function for stream[%d],component[%d]: receive size : %d",stream_id,component_id,len);
     return;
   }
 
@@ -469,23 +450,18 @@ void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
   {
       jbyteArray arr = (*env)->NewByteArray(env,len);
       (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
-      (*env)->CallVoidMethod(env, cbObserverCtx[component_id].jObj, cbObserverCtx[component_id].jmid, arr);
+      (*env)->CallVoidMethod(env, recvCallbackCtx[stream_id][component_id].jObj, recvCallbackCtx[stream_id][component_id].jmid, arr);
       (*env)->DeleteLocalRef(env, arr);
   }
-
 }
 
+JNIEXPORT void CAST_JNI(registerReceiveCallbackNative, jobject cb_obj,jint stream_id,jint component_id) {
 
-JNIEXPORT void CAST_JNI(registerReceiveObserverNative, jobject cb_obj, jint component_id) {
-
-    cbObserverCtx[component_id].jObj = (*env)->NewGlobalRef(env,cb_obj);
-    jclass clz = (*env)->GetObjectClass(env,cbObserverCtx[component_id].jObj);
-    cbObserverCtx[component_id].jmid = (*env)->GetMethodID(env,clz,"obCallback","([B)V");
-    cbObserverCtx[component_id].used = 1;
+    recvCallbackCtx[stream_id][component_id].jObj = (*env)->NewGlobalRef(env,cb_obj);
+    jclass clz = (*env)->GetObjectClass(env,recvCallbackCtx[stream_id][component_id].jObj);
+    recvCallbackCtx[stream_id][component_id].jmid = (*env)->GetMethodID(env,clz,"onMessage","([B)V");
+    recvCallbackCtx[stream_id][component_id].used = 1;
 }
-
-
-
 
 JNIEXPORT void CAST_JNI(registerStateObserverNative,jobject cb_obj) {
 
@@ -503,27 +479,27 @@ JNIEXPORT void CAST_JNI(registerStateObserverNative,jobject cb_obj) {
 
 
 
-JNIEXPORT jint JNICALL CAST_JNI(createReceiveProcessNative,jobject cb_obj,jint sid,jint cid) {
-    jobject cb_object = (*env)->NewGlobalRef(env,cb_obj);
-    jclass clz = (*env)->GetObjectClass(env,cb_object);
-    if(clz == NULL) {
-        LOGD("Failed to find class\n");
-    }
-    jmethodID cb_mid = (*env)->GetMethodID(env,clz,"onMessage","([BI)V");
+// JNIEXPORT jint JNICALL CAST_JNI(createReceiveProcessNative,jobject cb_obj,jint sid,jint cid) {
+//     jobject cb_object = (*env)->NewGlobalRef(env,cb_obj);
+//     jclass clz = (*env)->GetObjectClass(env,cb_object);
+//     if(clz == NULL) {
+//         LOGD("Failed to find class\n");
+//     }
+//     jmethodID cb_mid = (*env)->GetMethodID(env,clz,"onMessage","([BI)V");
       
-    gsize buf_len = 1024*1024;
-    guint8 *buf = (guint8*) malloc(buf_len);
-    jbyteArray arr = (*env)->NewByteArray(env,buf_len);
-    gsize recv_size = 0;
-    exit_thread = FALSE;
-    while(!exit_thread)
-    {
-      recv_size = nice_agent_recv(agent, sid,cid,buf,buf_len,NULL,NULL);
-      LOGD("nice_agent_recv s[%d]c[%d] recv size : %d",sid,cid,recv_size);
-      if(recv_size>0) {
-          (*env)->SetByteArrayRegion(env,arr,0,recv_size, (jbyte*)buf);
-          (*env)->CallVoidMethod(env,cb_object,cb_mid,arr);
-      }
-    }
-    LOGD("thread out");
-} 
+//     gsize buf_len = 1024*1024;
+//     guint8 *buf = (guint8*) malloc(buf_len);
+//     jbyteArray arr = (*env)->NewByteArray(env,buf_len);
+//     gsize recv_size = 0;
+//     exit_thread = FALSE;
+//     while(!exit_thread)
+//     {
+//       recv_size = nice_agent_recv(agent, sid,cid,buf,buf_len,NULL,NULL);
+//       LOGD("nice_agent_recv s[%d]c[%d] recv size : %d",sid,cid,recv_size);
+//       if(recv_size>0) {
+//           (*env)->SetByteArrayRegion(env,arr,0,recv_size, (jbyte*)buf);
+//           (*env)->CallVoidMethod(env,cb_object,cb_mid,arr);
+//       }
+//     }
+//     LOGD("thread out");
+// } 
