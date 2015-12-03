@@ -75,6 +75,7 @@ void cb_component_state_changed(NiceAgent *agent, guint stream_id,
 void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data);
 
+
 void cb_new_selected_pair(NiceAgent *agent, guint _stream_id,
     guint component_id, gchar *lfoundation,
     gchar *rfoundation, gpointer data);
@@ -112,9 +113,13 @@ void cbMsgToJavaStatic(char* c)
 
 JNIEnv* getEnv()
 {
-    JNIEnv* env;
-    (*gJavaVM)->GetEnv(gJavaVM, (void**)&env, JNI_VERSION_1_6);
-    return env;
+  JNIEnv* env;
+  (*gJavaVM)->GetEnv(gJavaVM, (void**)&env, JNI_VERSION_1_6);
+  return env;
+}
+
+JNIEXPORT jint JNICALL CAST_JNI(restartStreamNative,jint stream_id) {
+  return nice_agent_restart_stream(agent,stream_id);
 }
 
 
@@ -250,9 +255,9 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jstring jstreamName,jint numberO
     for(int i=0;i<totalComponentNumber;i++) {
       // Attach to the component to receive the data
       // Without this call, candidates cannot be gathered
-      nice_agent_attach_recv(agent, stream_id, i+1,
-          g_main_loop_get_context (gloop), cb_nice_recv1, NULL);
-      
+        nice_agent_attach_recv(agent, stream_id, i+1,
+            g_main_loop_get_context (gloop), cb_nice_recv1, NULL);
+
     }
 
     return stream_id;
@@ -305,6 +310,7 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdpNative,jstring jremoteSdp,jlong size
   gchar* sdp_decode;
   const char *remoteSdp = (*env)->GetStringUTFChars(env, jremoteSdp, 0);
   gsize sdp_len = size;
+  LOGD("set Remote SDP : %s\n",remoteSdp);
   sdp_decode = (gchar *) g_base64_decode (remoteSdp, &sdp_len);
   if (sdp_decode && nice_agent_parse_remote_sdp (agent, sdp_decode) > 0) {
     g_free (sdp_decode);
@@ -351,6 +357,32 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jbyteArray data,jint len,jint str
   return ret;
 }
 
+jbyte* directBuffers[16];
+
+JNIEXPORT jint JNICALL CAST_JNI(setDirectBufferIndexNative,jobject data,jint index)
+{
+
+  int ret=1;
+  directBuffers[index] = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
+
+  return ret;
+}
+
+
+JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectByIndexNative,jobject data,jint len,jint index,jint stream_id,jint component_id)
+{
+  if(component_id>totalComponentNumber || component_id<=0) {
+    LOGD("fail to send to component id %d",component_id);
+    return 0;
+  }
+
+  int ret;
+
+  ret = nice_agent_send(agent, stream_id, component_id, len, directBuffers[index]);
+  return ret;
+}
+
+
 JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jobject data,jint len,jint stream_id,jint component_id)
 {
   if(component_id>totalComponentNumber || component_id<=0) {
@@ -362,7 +394,7 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jobject data,jint len,jint 
   const jbyte* _data = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
 
   ret = nice_agent_send(agent, stream_id, component_id, len, _data);
-  LOGD("Send %d size",ret);
+  //LOGD("Send %d size",ret);
   return ret;
 }
 
@@ -423,6 +455,8 @@ cb_new_selected_pair(NiceAgent *agent, guint _stream_id,
 jobject callback_obj;
 jmethodID callback_mid;
 
+JNIEnv *jenv = NULL;
+
 void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data)
 {
@@ -450,10 +484,14 @@ void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
   {
       jbyteArray arr = (*env)->NewByteArray(env,len);
       (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
-      (*env)->CallVoidMethod(env, recvCallbackCtx[stream_id][component_id].jObj, recvCallbackCtx[stream_id][component_id].jmid, arr);
+      jbyteArray tmp_arr = (jbyteArray) (*env)->NewGlobalRef(env, arr);
+      (*env)->CallVoidMethod(env, recvCallbackCtx[stream_id][component_id].jObj, recvCallbackCtx[stream_id][component_id].jmid, tmp_arr);
+      (*env)->DeleteGlobalRef(env,tmp_arr);
       (*env)->DeleteLocalRef(env, arr);
+
   }
 }
+
 
 JNIEXPORT void CAST_JNI(registerReceiveCallbackNative, jobject cb_obj,jint stream_id,jint component_id) {
 
@@ -474,10 +512,6 @@ JNIEXPORT void CAST_JNI(registerStateObserverNative,jobject cb_obj) {
     cbComponentStateChangedId  = (*env)->GetMethodID(env,clz,"cbComponentStateChanged","(III)V");
     hasStateObserver = 1;
 }
-
-
-
-
 
 // JNIEXPORT jint JNICALL CAST_JNI(createReceiveProcessNative,jobject cb_obj,jint sid,jint cid) {
 //     jobject cb_object = (*env)->NewGlobalRef(env,cb_obj);
