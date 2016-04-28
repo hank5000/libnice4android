@@ -11,7 +11,7 @@
 #endif
 
 // has input CAST
-#define CAST_JNI_FN(fn) Java_com_via_libnice_##fn
+#define CAST_JNI_FN(fn) Java_com_via_p2p_libnice_##fn
 #define CAST_JNI_IN(fn, arg...) CAST_JNI_FN(fn) (JNIEnv* env, jobject obj, arg)
 #define CAST_JNI(fn, arg...) CAST_JNI_IN(fn, arg)
 // has no input CAST
