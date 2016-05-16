@@ -55,7 +55,7 @@ typedef struct AgentManagetCtx {
   jobject stateObserverObj;
   jmethodID cbCandidateGatheringDoneId;
   jmethodID cbComponentStateChangedId;
-  CallbackCtx *recvCallbackCtx[100];
+  CallbackCtx *recvCallbackCtx[MAX_COMPONENT];
   GMainLoop *gloop;
 }AgentCtx;
 
@@ -64,18 +64,11 @@ void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
 void cb_component_state_changed(NiceAgent *agent, guint stream_id,
     guint component_id, guint state,
     gpointer data);
-void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
+void recv_callback(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data);
 void cb_new_selected_pair(NiceAgent *agent, guint _stream_id,
     guint component_id, gchar *lfoundation,
     gchar *rfoundation, gpointer data);
-
-typedef struct _RecvInfo {
-  jobject   jobj;
-  jmethodID jmid;
-  int stream_id;
-  int component_id;
-} RecvInfo;
 
 JNIEnv* getEnv() {
   
@@ -121,8 +114,6 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     NiceAgent* tmp_agent = NULL;
     // initialize the Ctx
     AgentCtx* agentCtx = (AgentCtx*) calloc(1,sizeof(AgentCtx));
-//    AgentCtx agentCtxR 
-//    AgentCtx* agentCtx = &agentCtxR;
 
     LOGD("%x",agentCtx);
 
@@ -130,13 +121,9 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     agentCtx->stateObserverObj = 0;
     agentCtx->cbCandidateGatheringDoneId=0;
     agentCtx->cbComponentStateChangedId=0;
-    // for(int i=0;i<MAX_COMPONENT;i++) {
-    //   //for(int j=0;j<MAX_STREAM;j++) {
-    //     agentCtx->recvCallbackCtx[i].used = 0;
-    //     agentCtx->recvCallbackCtx[i].jObj = 0;
-    //     agentCtx->recvCallbackCtx[i].jmid = 0;
-    //   //}
-    // }
+    for(int i=0;i<MAX_COMPONENT;i++) {
+        agentCtx->recvCallbackCtx[i] = NULL;
+    }
     agentCtx->gloop = tmp_gloop;
     // Create the nice agent
     if(useReliable==1) {
@@ -152,7 +139,6 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     agentCtx->agent = tmp_agent;
     LOGD("%x",tmp_agent);
 
-
     // Connect to the signals
     g_signal_connect(tmp_agent, "candidate-gathering-done",
       G_CALLBACK(cb_candidate_gathering_done), agentCtx);
@@ -164,13 +150,17 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     return (long)agentCtx;
 }
 
-JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring jstun_ip,jint jstun_port) {
-    
-    AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-        LOGD("%x",agentCtx);
 
+JNIEXPORT jint JNICALL CAST_JNI(destroyAgentNative,jlong agentCtxLong) {
+    AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
+    g_object_unref(agentCtx->agent);
+}
+
+JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring jstun_ip,jint jstun_port) {
+    AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
+    LOGD("%x",agentCtx);
     NiceAgent* tmp_agent = agentCtx->agent;
-    
+
     const gchar *stun_ip = (gchar*) (*env)->GetStringUTFChars(env, jstun_ip, 0);
     int stun_port = DEFAULT_STUN_PORT;
     int ret = 0;
@@ -234,10 +224,8 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jlong agentCtxLong,jstring jstre
 
     agentCtx->totalComponentNumber = numberOfComponent;
     for(int i=0;i<numberOfComponent;i++) {
-      // Attach to the component to receive the data
-      // Without this call, candidates cannot be gathered
         nice_agent_attach_recv(tmp_agent, stream_id, i+1,
-            g_main_loop_get_context (agentCtx->gloop), cb_nice_recv1, agentCtx);
+            g_main_loop_get_context (agentCtx->gloop), recv_callback, agentCtx);
     }
     return stream_id;
 }
@@ -300,11 +288,8 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdpNative,jlong agentCtxLong,jstring jr
     g_free (sdp_decode);
     LOGD("waiting for state READY or FAILED signal...");
   } else {
-    // TODO: Add Callback Function.
     LOGE("please try it again");
-    //cbMsgToJava("please retry it");
   }
-   // use your string
   (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
 }
 
@@ -331,17 +316,10 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jlong agentCtxLong,jbyteArray dat
     LOGD("fail to send to component id %d",component_id);
     return 0;
   }
-  //LOGD("fsend to component id %d",component_id);
   jboolean isCopy;
   int ret;
-  //const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, 0);
   const jbyte* _data = (jbyte*) (*env)->GetByteArrayElements(env,data,0);
   ret = nice_agent_send(tmp_agent, stream_id, component_id, len, _data);
-
-  // if(isCopy) {
-  //   (*env)->ReleaseByteArrayElements(env,data,_data,0);
-  // }
-
 
   return ret;
 }
@@ -385,7 +363,6 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataDirectNative,jlong agentCtxLong,jobject 
   const jbyte* _data = (jbyte*) (*env)->GetDirectBufferAddress(env,data);
 
   ret = nice_agent_send(tmp_agent, stream_id, component_id, len, _data);
-  //LOGD("Send %d size",ret);
   return ret;
 }
 
@@ -400,12 +377,10 @@ void cb_candidate_gathering_done(NiceAgent *agent, guint stream_id,
     if((*gJavaVM)->AttachCurrentThread(gJavaVM, &env, NULL) != JNI_OK)
     {
       LOGD("%s: AttachCurrentThread() failed", __FUNCTION__);
-
     } 
     else
     {
         LOGD("candidate gathering done");
-
         (*env)->CallVoidMethod(env,agentCtx->stateObserverObj,agentCtx->cbCandidateGatheringDoneId,stream_id);
     }
   }
@@ -427,9 +402,8 @@ void cb_component_state_changed(NiceAgent *agent, guint stream_id,
     } 
     else
     {
-              LOGD("component state change");
-
-        (*env)->CallVoidMethod(env,agentCtx->stateObserverObj,agentCtx->cbComponentStateChangedId,stream_id,component_id,state);
+      LOGD("component state change");
+      (*env)->CallVoidMethod(env,agentCtx->stateObserverObj,agentCtx->cbComponentStateChangedId,stream_id,component_id,state);
     }
   }
 }
@@ -443,7 +417,7 @@ cb_new_selected_pair(NiceAgent *agent, guint _stream_id,
   LOGD("SIGNAL: selected pair %s %s", lfoundation, rfoundation);
 }
 
-void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
+void recv_callback(NiceAgent *agent, guint stream_id, guint component_id,
     guint len, gchar *buf, gpointer data) {
 
   AgentCtx* agentCtx = (AgentCtx*) data;
@@ -452,7 +426,7 @@ void cb_nice_recv1(NiceAgent *agent, guint stream_id, guint component_id,
   jclass cls;
   jmethodID mid;
 
-  if(agentCtx->recvCallbackCtx[component_id]->used!=1) {
+  if(agentCtx->recvCallbackCtx[component_id]==NULL) {
     LOGE("Please Register callback function for stream[%d],component[%d]: receive size : %d",stream_id,component_id,len);
     return;
   }
