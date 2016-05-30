@@ -19,7 +19,7 @@
 // log tag
 #define JNI_TAG "libnice-jni"
 // debug use
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, JNI_TAG, __VA_ARGS__)
 #else
@@ -115,7 +115,7 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     // initialize the Ctx
     AgentCtx* agentCtx = (AgentCtx*) calloc(1,sizeof(AgentCtx));
 
-    LOGD("%x",agentCtx);
+
 
     agentCtx->hasStateObserver = 0;
     agentCtx->stateObserverObj = 0;
@@ -137,7 +137,7 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
         return 0;
     }
     agentCtx->agent = tmp_agent;
-    LOGD("%x",tmp_agent);
+
 
     // Connect to the signals
     g_signal_connect(tmp_agent, "candidate-gathering-done",
@@ -158,7 +158,7 @@ JNIEXPORT jint JNICALL CAST_JNI(destroyAgentNative,jlong agentCtxLong) {
 
 JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring jstun_ip,jint jstun_port) {
     AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-    LOGD("%x",agentCtx);
+
     NiceAgent* tmp_agent = agentCtx->agent;
 
     const gchar *stun_ip = (gchar*) (*env)->GetStringUTFChars(env, jstun_ip, 0);
@@ -234,7 +234,7 @@ JNIEXPORT jstring JNICALL CAST_JNI(getLocalSdpNative,jlong agentCtxLong,jint str
   
   jstring ret;
   AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-      LOGD("%x",agentCtx);
+
 
   NiceAgent* tmp_agent = agentCtx->agent;
 
@@ -257,12 +257,11 @@ JNIEXPORT jint JNICALL CAST_JNI(gatheringCandidateNative,jlong agentCtxLong,jint
   LOGD("gatheringCandidateNative");
   jint ret = 1;
   AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-  LOGD("%x",agentCtx);
 
   NiceAgent* tmp_agent = agentCtx->agent;
   LOGD("%x,%d",tmp_agent,stream_id);
 
-    LOGD("gatheringCandidateNative2");
+  LOGD("gatheringCandidateNative2");
 
   // Start gathering local candidates
   if (!nice_agent_gather_candidates(tmp_agent, stream_id)) {
