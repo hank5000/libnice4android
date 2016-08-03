@@ -176,6 +176,7 @@ JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring 
           ret = 1;
       }
     }
+    (*env)->ReleaseStringUTFChars(env,jstun_ip,stun_ip);
     return ret;
 }
 
@@ -301,9 +302,13 @@ JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jlong agentCtxLong,jstring data,ji
     LOGD("fail to send to component id %d",component_id);
     return 0;
   }
+  jboolean isCopy;
 
-  const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, 0);
+  const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, &isCopy);
   return nice_agent_send(tmp_agent, stream_id, component_id, strlen(line), line);
+  if (isCopy == JNI_TRUE) {
+    (*env)->ReleaseStringUTFChars(env,data, line);
+  }
 }
 
 
@@ -319,6 +324,8 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jlong agentCtxLong,jbyteArray dat
   int ret;
   const jbyte* _data = (jbyte*) (*env)->GetByteArrayElements(env,data,0);
   ret = nice_agent_send(tmp_agent, stream_id, component_id, len, _data);
+  (*env)->ReleaseByteArrayElements(env,data,_data,JNI_ABORT);
+
 
   return ret;
 }
@@ -440,8 +447,9 @@ void recv_callback(NiceAgent *agent, guint stream_id, guint component_id,
       (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
       jbyteArray tmp_arr = (jbyteArray) (*env)->NewGlobalRef(env, arr);
       (*env)->CallVoidMethod(env, agentCtx->recvCallbackCtx[component_id]->jObj, agentCtx->recvCallbackCtx[component_id]->jmid, tmp_arr);
+      
+      (*env)->ReleaseByteArrayElements(env,arr,tmp_arr,JNI_ABORT);
       (*env)->DeleteGlobalRef(env,tmp_arr);
-      (*env)->DeleteLocalRef(env, arr);
   }
 }
 
