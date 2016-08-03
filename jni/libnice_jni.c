@@ -170,13 +170,13 @@ JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring 
 
     LOGD("set Stun address %s:%d",stun_ip,stun_port);
     if(stun_ip) {
-        if(tmp_agent!=NULL) { 
-          g_object_set(tmp_agent, "stun-server", stun_ip, NULL);
-          g_object_set(tmp_agent, "stun-server-port", stun_port, NULL);
-          ret = 1;
+      if(tmp_agent!=NULL) { 
+        g_object_set(tmp_agent, "stun-server", stun_ip, NULL);
+        g_object_set(tmp_agent, "stun-server-port", stun_port, NULL);
+        ret = 1;
       }
+      (*env)->ReleaseStringUTFChars(env,jstun_ip,stun_ip);
     }
-    (*env)->ReleaseStringUTFChars(env,jstun_ip,stun_ip);
     return ret;
 }
 
@@ -219,7 +219,7 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jlong agentCtxLong,jstring jstre
     }
     nice_agent_set_stream_name (tmp_agent, stream_id, name);
 
-    if(isCopy == JNI_TRUE) {
+    if(name) {
       (*env)->ReleaseStringUTFChars(env,jstreamName,name);
     }
 
@@ -290,7 +290,10 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdpNative,jlong agentCtxLong,jstring jr
   } else {
     LOGE("please try it again");
   }
-  (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
+  if (remoteSdp)
+  {
+    (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
+  }
 }
 
 JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jlong agentCtxLong,jstring data,jint stream_id,jint component_id) {
@@ -306,7 +309,7 @@ JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jlong agentCtxLong,jstring data,ji
 
   const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, &isCopy);
   return nice_agent_send(tmp_agent, stream_id, component_id, strlen(line), line);
-  if (isCopy == JNI_TRUE) {
+  if (line) {
     (*env)->ReleaseStringUTFChars(env,data, line);
   }
 }
@@ -448,8 +451,9 @@ void recv_callback(NiceAgent *agent, guint stream_id, guint component_id,
       jbyteArray tmp_arr = (jbyteArray) (*env)->NewGlobalRef(env, arr);
       (*env)->CallVoidMethod(env, agentCtx->recvCallbackCtx[component_id]->jObj, agentCtx->recvCallbackCtx[component_id]->jmid, tmp_arr);
       
-      (*env)->ReleaseByteArrayElements(env,arr,tmp_arr,JNI_ABORT);
       (*env)->DeleteGlobalRef(env,tmp_arr);
+      (*env)->DeleteLocalRef(env,arr);
+
   }
 }
 
