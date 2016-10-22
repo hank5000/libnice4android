@@ -19,7 +19,7 @@
 // log tag
 #define JNI_TAG "libnice-jni"
 // debug use
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, JNI_TAG, __VA_ARGS__)
 #else
@@ -115,7 +115,7 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
     // initialize the Ctx
     AgentCtx* agentCtx = (AgentCtx*) calloc(1,sizeof(AgentCtx));
 
-    LOGD("%x",agentCtx);
+
 
     agentCtx->hasStateObserver = 0;
     agentCtx->stateObserverObj = 0;
@@ -137,7 +137,7 @@ JNIEXPORT jlong JNICALL CAST_JNI(createAgentNative,jlong gloopLong,jint useRelia
         return 0;
     }
     agentCtx->agent = tmp_agent;
-    LOGD("%x",tmp_agent);
+
 
     // Connect to the signals
     g_signal_connect(tmp_agent, "candidate-gathering-done",
@@ -158,7 +158,7 @@ JNIEXPORT jint JNICALL CAST_JNI(destroyAgentNative,jlong agentCtxLong) {
 
 JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring jstun_ip,jint jstun_port) {
     AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-    LOGD("%x",agentCtx);
+
     NiceAgent* tmp_agent = agentCtx->agent;
 
     const gchar *stun_ip = (gchar*) (*env)->GetStringUTFChars(env, jstun_ip, 0);
@@ -170,11 +170,12 @@ JNIEXPORT jint JNICALL CAST_JNI(setStunAddressNative,jlong agentCtxLong,jstring 
 
     LOGD("set Stun address %s:%d",stun_ip,stun_port);
     if(stun_ip) {
-        if(tmp_agent!=NULL) { 
-          g_object_set(tmp_agent, "stun-server", stun_ip, NULL);
-          g_object_set(tmp_agent, "stun-server-port", stun_port, NULL);
-          ret = 1;
+      if(tmp_agent!=NULL) { 
+        g_object_set(tmp_agent, "stun-server", stun_ip, NULL);
+        g_object_set(tmp_agent, "stun-server-port", stun_port, NULL);
+        ret = 1;
       }
+      (*env)->ReleaseStringUTFChars(env,jstun_ip,stun_ip);
     }
     return ret;
 }
@@ -218,7 +219,7 @@ JNIEXPORT jint JNICALL CAST_JNI(addStreamNative,jlong agentCtxLong,jstring jstre
     }
     nice_agent_set_stream_name (tmp_agent, stream_id, name);
 
-    if(isCopy == JNI_TRUE) {
+    if(name) {
       (*env)->ReleaseStringUTFChars(env,jstreamName,name);
     }
 
@@ -234,7 +235,7 @@ JNIEXPORT jstring JNICALL CAST_JNI(getLocalSdpNative,jlong agentCtxLong,jint str
   
   jstring ret;
   AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-      LOGD("%x",agentCtx);
+
 
   NiceAgent* tmp_agent = agentCtx->agent;
 
@@ -257,12 +258,11 @@ JNIEXPORT jint JNICALL CAST_JNI(gatheringCandidateNative,jlong agentCtxLong,jint
   LOGD("gatheringCandidateNative");
   jint ret = 1;
   AgentCtx* agentCtx = (AgentCtx*) agentCtxLong;
-  LOGD("%x",agentCtx);
 
   NiceAgent* tmp_agent = agentCtx->agent;
   LOGD("%x,%d",tmp_agent,stream_id);
 
-    LOGD("gatheringCandidateNative2");
+  LOGD("gatheringCandidateNative2");
 
   // Start gathering local candidates
   if (!nice_agent_gather_candidates(tmp_agent, stream_id)) {
@@ -290,7 +290,10 @@ JNIEXPORT jint JNICALL CAST_JNI(setRemoteSdpNative,jlong agentCtxLong,jstring jr
   } else {
     LOGE("please try it again");
   }
-  (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
+  if (remoteSdp)
+  {
+    (*env)->ReleaseStringUTFChars(env, jremoteSdp, remoteSdp);
+  }
 }
 
 JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jlong agentCtxLong,jstring data,jint stream_id,jint component_id) {
@@ -302,9 +305,13 @@ JNIEXPORT jint JNICALL CAST_JNI(sendMsgNative,jlong agentCtxLong,jstring data,ji
     LOGD("fail to send to component id %d",component_id);
     return 0;
   }
+  jboolean isCopy;
 
-  const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, 0);
+  const gchar *line = (gchar*) (*env)->GetStringUTFChars(env, data, &isCopy);
   return nice_agent_send(tmp_agent, stream_id, component_id, strlen(line), line);
+  if (line) {
+    (*env)->ReleaseStringUTFChars(env,data, line);
+  }
 }
 
 
@@ -320,6 +327,8 @@ JNIEXPORT jint JNICALL CAST_JNI(sendDataNative,jlong agentCtxLong,jbyteArray dat
   int ret;
   const jbyte* _data = (jbyte*) (*env)->GetByteArrayElements(env,data,0);
   ret = nice_agent_send(tmp_agent, stream_id, component_id, len, _data);
+  (*env)->ReleaseByteArrayElements(env,data,_data,JNI_ABORT);
+
 
   return ret;
 }
@@ -441,8 +450,10 @@ void recv_callback(NiceAgent *agent, guint stream_id, guint component_id,
       (*env)->SetByteArrayRegion(env,arr,0,len, (jbyte*)buf);
       jbyteArray tmp_arr = (jbyteArray) (*env)->NewGlobalRef(env, arr);
       (*env)->CallVoidMethod(env, agentCtx->recvCallbackCtx[component_id]->jObj, agentCtx->recvCallbackCtx[component_id]->jmid, tmp_arr);
+      
       (*env)->DeleteGlobalRef(env,tmp_arr);
-      (*env)->DeleteLocalRef(env, arr);
+      (*env)->DeleteLocalRef(env,arr);
+
   }
 }
 
