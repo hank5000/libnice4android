@@ -1,21 +1,5 @@
 LOCAL_PATH  := $(call my-dir)
-
-LIBGSTREAMER_ROOT_PATH :=/Users/HankWu/Downloads/gstreamer-ndk
-
-ifeq ($(TARGET_ARCH_ABI),armeabi)
-LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/arm
-else ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/armv7
-else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
-LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/arm64
-else ifeq ($(TARGET_ARCH_ABI),x86)
-LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/x86
-else ifeq ($(TARGET_ARCH_ABI),x86_64)
-LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/x86_64
-else
-$(error Target arch ABI not supported)
-endif
-
+LIBGSTREAMER_PATH := $(LOCAL_PATH)/../../libgstreamer4android
 LIBNICE_PATH      := $(LOCAL_PATH)/libnice
 
 ENABLE_BUILD_EXECUTABLE := false
@@ -38,6 +22,16 @@ ifeq ($(ENABLE_BUILD_EXECUTABLE),false)
 ENABLE_SAMPLE :=
 endif
 
+
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := gstreamer_android
+LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/libgstreamer_android.so
+include $(PREBUILT_SHARED_LIBRARY)
+
+
+
+
 include $(CLEAR_VARS)
 NICE                    := libnice-0.1.13
 
@@ -50,7 +44,7 @@ LOCAL_MODULE            := libnice4android
 endif
 
 
-LOCAL_LDLIBS            := -llog 
+LOCAL_LDLIBS            := -llog
 
 
 LOCAL_SHARED_LIBRARIES  := gstreamer_android
@@ -68,9 +62,6 @@ NICE_DIRS               :=  $(LIBNICE_PATH)/ \
 LIBGSTREAMER_INCLUDE    := $(LIBGSTREAMER_PATH)/include/glib-2.0/ \
                            $(LIBGSTREAMER_PATH)/include/glib-2.0/glib/ \
 			               $(LIBGSTREAMER_PATH)/include/
-
-
-
 
 NICE_INCLUDES           := $(NICE_DIRS)
 NICE_SRC                := $(filter-out %test.c, $(foreach dir, $(NICE_DIRS), $(patsubst $(LOCAL_PATH)/%, %, $(wildcard $(addsuffix *.c, $(dir)))) ))
@@ -101,34 +92,4 @@ endif
 ifeq ($(ENABLE_BUILD_EXECUTABLE), true)
 include $(BUILD_EXECUTABLE)
 endif
-
-
-ifeq ($(TARGET_ARCH_ABI),armeabi)
-GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/arm
-else ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/armv7
-else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
-GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/arm64
-else ifeq ($(TARGET_ARCH_ABI),x86)
-GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/x86
-else ifeq ($(TARGET_ARCH_ABI),x86_64)
-GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/x86_64
-else
-$(error Target arch ABI not supported)
-endif
-
-ifndef GSTREAMER_ROOT
-ifndef GSTREAMER_ROOT_ANDROID
-$(error GSTREAMER_ROOT_ANDROID is not defined!)
-endif
-GSTREAMER_ROOT        := $(GSTREAMER_ROOT_ANDROID)
-endif
-
-GSTREAMER_NDK_BUILD_PATH  := $(GSTREAMER_ROOT)/share/gst-android/ndk-build/
-
-include $(GSTREAMER_NDK_BUILD_PATH)/plugins.mk
-GSTREAMER_PLUGINS         := $(GSTREAMER_PLUGINS_CORE) $(GSTREAMER_PLUGINS_PLAYBACK) $(GSTREAMER_PLUGINS_CODECS) $(GSTREAMER_PLUGINS_NET) $(GSTREAMER_PLUGINS_SYS) $(GSTREAMER_PLUGINS_CODECS_RESTRICTED) $(GSTREAMER_CODECS_GPL) $(GSTREAMER_PLUGINS_ENCODING) $(GSTREAMER_PLUGINS_VIS) $(GSTREAMER_PLUGINS_EFFECTS) $(GSTREAMER_PLUGINS_NET_RESTRICTED)
-GSTREAMER_EXTRA_DEPS      := gstreamer-player-1.0 gstreamer-video-1.0 glib-2.0
-
-include $(GSTREAMER_NDK_BUILD_PATH)/gstreamer-1.0.mk
 
