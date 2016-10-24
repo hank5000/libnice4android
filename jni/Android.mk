@@ -1,6 +1,6 @@
 LOCAL_PATH  := $(call my-dir)
 
-LIBGSTREAMER_ROOT_PATH :=/Users/HankWu/Downloads/gstreamer-ndk
+LIBGSTREAMER_ROOT_PATH :=../../gstreamer-1.0-android-universal-1.9.90
 
 ifeq ($(TARGET_ARCH_ABI),armeabi)
 LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/arm
