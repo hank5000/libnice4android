@@ -1,5 +1,7 @@
 LOCAL_PATH  := $(call my-dir)
 
+
+
 LIBGSTREAMER_ROOT_PATH :=/Users/HankWu/Downloads/gstreamer-ndk
 
 ifeq ($(TARGET_ARCH_ABI),armeabi)
@@ -15,75 +17,6 @@ LIBGSTREAMER_PATH        := $(LIBGSTREAMER_ROOT_PATH)/x86_64
 else
 $(error Target arch ABI not supported)
 endif
-
-# glib
-include $(CLEAR_VARS)
-LOCAL_MODULE    := glib
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libglib-2.0.a
-LOCAL_STATIC_LIBRARIES := intl iconv
-
-LOCAL_EXPORT_CFLAGS := 				\
-	-I$(LIBGSTREAMER_PATH)/include/glib-2.0	\
-	-I$(LIBGSTREAMER_PATH)/lib/glib-2.0/include	\
-	$(NULL)
-include $(PREBUILT_STATIC_LIBRARY)
-
-# gobject
-include $(CLEAR_VARS)
-LOCAL_MODULE    := gobject
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libgobject-2.0.a
-LOCAL_STATIC_LIBRARIES := glib
-include $(PREBUILT_STATIC_LIBRARY)
-
-# gmodule
-include $(CLEAR_VARS)
-LOCAL_MODULE    := gmodule
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libgmodule-2.0.a
-LOCAL_STATIC_LIBRARIES := glib
-include $(PREBUILT_STATIC_LIBRARY)
-
-# gthread
-include $(CLEAR_VARS)
-LOCAL_MODULE    := gthread
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libgthread-2.0.a
-LOCAL_STATIC_LIBRARIES := glib
-include $(PREBUILT_STATIC_LIBRARY)
-
-# gio
-include $(CLEAR_VARS)
-LOCAL_MODULE := gio
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libgio-2.0.a
-LOCAL_STATIC_LIBRARIES := glib
-include $(PREBUILT_STATIC_LIBRARY)
-
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := iconv
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libiconv.a
-LOCAL_EXPORT_C_INCLUDES := $(LIBGSTREAMER_PATH)/include/
-include $(PREBUILT_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := intl
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libintl.a
-LOCAL_EXPORT_C_INCLUDES := $(LIBGSTREAMER_PATH)/include/
-include $(PREBUILT_STATIC_LIBRARY)
-
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := z
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libz.a
-LOCAL_EXPORT_C_INCLUDES := $(LIBGSTREAMER_PATH)/include/
-include $(PREBUILT_STATIC_LIBRARY)
-
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := ffi
-LOCAL_SRC_FILES := $(LIBGSTREAMER_PATH)/lib/libffi.a
-LOCAL_EXPORT_C_INCLUDES := $(LIBGSTREAMER_PATH)/include/
-LOCAL_STATIC_LIBRARIES := glib
-include $(PREBUILT_STATIC_LIBRARY)
-
 
 LIBNICE_PATH      := $(LOCAL_PATH)/libnice
 
@@ -119,10 +52,10 @@ LOCAL_MODULE            := libnice4android
 endif
 
 
-LOCAL_LDLIBS            := -llog
+LOCAL_LDLIBS            := -llog 
 
 
-LOCAL_STATIC_LIBRARIES  := glib iconv intl gio gthread gmodule gobject z ffi
+LOCAL_SHARED_LIBRARIES  := gstreamer_android
 LOCAL_CFLAGS            += -DHAVE_CONFIG_H -std=c99
 
 NICE_DIRS               :=  $(LIBNICE_PATH)/ \
@@ -136,8 +69,7 @@ NICE_DIRS               :=  $(LIBNICE_PATH)/ \
 
 LIBGSTREAMER_INCLUDE    := $(LIBGSTREAMER_PATH)/include/glib-2.0/ \
                            $(LIBGSTREAMER_PATH)/include/glib-2.0/glib/ \
-			               $(LIBGSTREAMER_PATH)/include/ \
-                           $(LIBGSTREAMER_PATH)/lib/glib-2.0/include/
+			               $(LIBGSTREAMER_PATH)/include/
 
 
 
@@ -172,4 +104,33 @@ ifeq ($(ENABLE_BUILD_EXECUTABLE), true)
 include $(BUILD_EXECUTABLE)
 endif
 
+
+ifeq ($(TARGET_ARCH_ABI),armeabi)
+GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/arm
+else ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/armv7
+else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
+GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/arm64
+else ifeq ($(TARGET_ARCH_ABI),x86)
+GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/x86
+else ifeq ($(TARGET_ARCH_ABI),x86_64)
+GSTREAMER_ROOT        := $(LIBGSTREAMER_ROOT_PATH)/x86_64
+else
+$(error Target arch ABI not supported)
+endif
+
+ifndef GSTREAMER_ROOT
+ifndef GSTREAMER_ROOT_ANDROID
+$(error GSTREAMER_ROOT_ANDROID is not defined!)
+endif
+GSTREAMER_ROOT        := $(GSTREAMER_ROOT_ANDROID)
+endif
+
+GSTREAMER_NDK_BUILD_PATH  := $(GSTREAMER_ROOT)/share/gst-android/ndk-build/
+
+include $(GSTREAMER_NDK_BUILD_PATH)/plugins.mk
+GSTREAMER_PLUGINS         := $(GSTREAMER_PLUGINS_CORE) $(GSTREAMER_PLUGINS_PLAYBACK) $(GSTREAMER_PLUGINS_CODECS) $(GSTREAMER_PLUGINS_NET) $(GSTREAMER_PLUGINS_SYS) $(GSTREAMER_PLUGINS_CODECS_RESTRICTED) $(GSTREAMER_CODECS_GPL) $(GSTREAMER_PLUGINS_ENCODING) $(GSTREAMER_PLUGINS_VIS) $(GSTREAMER_PLUGINS_EFFECTS) $(GSTREAMER_PLUGINS_NET_RESTRICTED)
+GSTREAMER_EXTRA_DEPS      := gstreamer-player-1.0 gstreamer-video-1.0 glib-2.0
+
+include $(GSTREAMER_NDK_BUILD_PATH)/gstreamer-1.0.mk
 
