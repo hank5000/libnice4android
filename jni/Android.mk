@@ -1,5 +1,16 @@
 LOCAL_PATH  := $(call my-dir)
 
+
+ENABLE_BUILD_EXECUTABLE := false
+ENABLE_BUILD_SHARED := true
+ENABLE_BUILD_JNI_PART := true
+COMBINE_JNI_AND_LIB := true
+
+ENABLE_SAMPLE := sdp
+
+
+
+
 LIBGSTREAMER_ROOT_PATH :=../../gstreamer-1.0-android-universal-1.9.90
 
 ifeq ($(TARGET_ARCH_ABI),armeabi)
@@ -87,13 +98,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 LIBNICE_PATH      := $(LOCAL_PATH)/libnice
 
-ENABLE_BUILD_EXECUTABLE := false
-ENABLE_BUILD_SHARED := true
-ENABLE_BUILD_JNI_PART := true
-
-ENABLE_SAMPLE := sdp
 # simple, threaded, sdp
-
 
 # if both true, then turn executable off
 ifeq ($(ENABLE_BUILD_SHARED),true)
@@ -119,11 +124,8 @@ LOCAL_MODULE            := libnice4android
 endif
 
 
-LOCAL_LDLIBS            := -llog
-
-
 LOCAL_STATIC_LIBRARIES  := glib iconv intl gio gthread gmodule gobject z ffi
-LOCAL_CFLAGS            += -DHAVE_CONFIG_H -std=c99
+LOCAL_CFLAGS            += -DHAVE_CONFIG_H -O3 -DNDEBUG
 
 NICE_DIRS               :=  $(LIBNICE_PATH)/ \
                             $(LIBNICE_PATH)/agent/ \
@@ -140,7 +142,7 @@ LIBGSTREAMER_INCLUDE    := $(LIBGSTREAMER_PATH)/include/glib-2.0/ \
                            $(LIBGSTREAMER_PATH)/lib/glib-2.0/include/
 
 
-
+LOCAL_LDLIBS            := -llog
 
 NICE_INCLUDES           := $(NICE_DIRS)
 NICE_SRC                := $(filter-out %test.c, $(foreach dir, $(NICE_DIRS), $(patsubst $(LOCAL_PATH)/%, %, $(wildcard $(addsuffix *.c, $(dir)))) ))
@@ -158,8 +160,10 @@ else ifeq ($(ENABLE_SAMPLE),threaded)
 LOCAL_SRC_FILES         += $(LIBNICE_PATH)/examples/threaded-example.c
 endif
 
+ifeq ($(COMBINE_JNI_AND_LIB),true)
 ifeq ($(ENABLE_BUILD_JNI_PART),true)
 LOCAL_SRC_FILES         += $(LOCAL_PATH)/libnice_jni.c
+endif
 endif
 
 
@@ -173,3 +177,18 @@ include $(BUILD_EXECUTABLE)
 endif
 
 
+ifeq ($(COMBINE_JNI_AND_LIB),false)
+ifeq ($(ENABLE_BUILD_JNI_PART), true)
+
+
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES:=$(LOCAL_PATH)/libnice_jni.c
+LOCAL_SHARED_LIBRARIES:=nice4android
+LOCAL_C_INCLUDES        := $(NICE_INCLUDES) $(LIBGSTREAMER_INCLUDE) #add your own headers if needed
+LOCAL_CFLAGS            += -DHAVE_CONFIG_H -std=c99 -O3 -DNDEBUG
+LOCAL_LDLIBS            := -llog
+LOCAL_MODULE := nice4android_jni
+include $(BUILD_SHARED_LIBRARY)
+
+endif
+endif
